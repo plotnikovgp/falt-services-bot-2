@@ -1,0 +1,80 @@
+version: "3.8"
+services:
+    bot:
+        # image: flexzis/falt_services_bot:latest
+        build:
+            context: .
+        container_name: "telegram-falt-bot"
+        restart: always
+        environment:
+            - BOT_TOKEN
+            - ADMIN_ID
+            - ADMIN_GROUP_ID
+            - DB_HOST
+            - DB_USER
+            - DB_PASS
+            - DB_NAME
+            - REDIS_HOST
+            - YOOMONEY_TOKEN
+        volumes:
+            - "/etc/timezone:/etc/timezone:ro"
+            - "/etc/localtime:/etc/localtime:ro"
+        depends_on:
+            - redis
+            - db
+    redis:
+        image: redis:6.0-alpine
+        restart: always
+        container_name: "telegram-falt-redis"
+        hostname: redis
+        volumes:
+            - "redis_config:/usr/local/etc/redis"
+            - "redis_data:/data"
+        command: "redis-server /usr/local/etc/redis/redis.conf"
+    db:
+      container_name: "telegram-falt-postgres"
+      image: postgres:12-alpine
+      restart: always
+      environment:
+          POSTGRES_USER: ${DB_USER}
+          POSTGRES_PASSWORD: ${DB_PASS}
+          POSTGRES_DB: ${DB_NAME}
+      volumes:
+        - "postgres_data:/var/lib/postgresql/data"
+#    pgadmin:
+#      container_name: "telegram-falt-pgadmin"
+#      image: dpage/pgadmin4
+#      restart: always
+#      environment:
+#          PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+#          PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASS}
+#      ports:
+#        - "5050:80"
+#      volumes:
+#        - "pgadmin_data:/var/lib/pgadmin"
+
+volumes:
+    redis_config:
+        driver: local
+        driver_opts:
+            type: 'none'
+            o: 'bind'
+            device: './redis_config'
+    redis_data:
+        driver: local
+        driver_opts:
+            type: 'none'
+            o: 'bind'
+            device: './redis_data'
+    postgres_data:
+        driver: local
+        driver_opts:
+            type: 'none'
+            o: 'bind'
+            device: './postgres_data'
+    pgadmin_data:
+        driver: local
+        driver_opts:
+            type: 'none'
+            o: 'bind'
+            device: './pgadmin_data'

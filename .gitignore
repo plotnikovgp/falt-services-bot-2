@@ -1,0 +1,9 @@
+/postgres_data/
+/pgadmin_data/
+/redis_config/
+/redis_data/
+/tgbot/databases/db_test.py
+/tgbot/paysystems/pay_test.py
+/tgbot/locks/lock_test.py
+/.env
+/venv/
