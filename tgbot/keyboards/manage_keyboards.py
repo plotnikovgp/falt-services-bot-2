@@ -1,7 +1,7 @@
 from aiogram import types
 from datetime import date, timedelta, datetime
 from tgbot.utils.time_funcs import day_repr, parse_time_range
-from tgbot.utils.schedule import WashSchedule, GymSchedule
+from tgbot.utils.schedule import WashSchedule, GymSchedule, Record
 from typing import List
 from tgbot.utils.time_funcs import format_record_string, diff_in_minutes
 
@@ -13,12 +13,13 @@ async def manage_records_keyboard(gym_records: List, wash_records: List):
 
     for gr in gym_records:
         label = 'Зал: '
+
         day = gr[1].date()
         time_range = [gr[1].time(), gr[2].time()]
         label += await format_record_string(day, time_range)
 
-        cost = await diff_in_minutes(time_range[1], time_range[0])
-        cost *= GymSchedule.minute_price
+        r = Record(gr[1], gr[2])
+        cost = r.cost('gym')
 
         button = types.InlineKeyboardButton(
             text=label,
@@ -32,8 +33,8 @@ async def manage_records_keyboard(gym_records: List, wash_records: List):
         label += await format_record_string(day, time_range)
         label += ', машинка #' + str(wr[3] + 1)
 
-        cost = await diff_in_minutes(time_range[1], time_range[0])
-        cost *= WashSchedule.minute_price
+        r = Record(wr[1], wr[2], wr[3])
+        cost = r.cost('wash')
 
         button = types.InlineKeyboardButton(
             text=label,

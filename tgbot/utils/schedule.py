@@ -40,6 +40,13 @@ class Record:
         delta = self.end - self.begin
         return round(delta.total_seconds() / 60)
 
+    def cost(self, service: str) -> float:
+        if service == 'gym':
+            return 30
+        minute_prices = {'wash': 0.25 if self.washer != 5 else 0.125, 'gym': 0.5, 'meet': 0.}
+        cost = self.duration() * minute_prices[service]
+        return round(cost * 2) / 2
+
 
 async def merge_records(records: typing.List[Record]):
     recs_by_washers = {}
@@ -100,7 +107,6 @@ class BaseSchedule:
 @dataclass
 class WashSchedule(BaseSchedule):
     is_working: typing.Tuple[int] = (1, 1, 1, 1, 1, 1)
-    minute_price: float = 0.25
     minutes_to_close: int = 30
 
     @staticmethod
@@ -183,7 +189,7 @@ class WashSchedule(BaseSchedule):
                            ) -> bool:
         [d1, d2] = [datetime.combine(day, t) for t in time_range]
         recs = await db.count_wash_records(d1, d2, washer)
-        return recs == 0 and datetime.now() + timedelta(minutes=10) <= d1
+        return recs == 0 and datetime.now() - timedelta(minutes=20) <= d1
 
 
 @dataclass_json
@@ -246,7 +252,6 @@ class MeetSchedule(BaseSchedule):
         plt.savefig(fname)
         return fname
 
-
     @classmethod
     async def is_time_free(cls,
                            db: Database,
@@ -257,12 +262,12 @@ class MeetSchedule(BaseSchedule):
         recs = await db.count_meet_records(d1, d2)
         return recs == 0 and datetime.now() <= d1
 
+
 @dataclass_json
 @dataclass
 class GymSchedule(BaseSchedule):
-    minute_price: float = 1 / 2.
     max_people: int = 7
-    minutes_to_close: int = 30
+    minutes_to_close: int = 5
 
     @classmethod
     async def is_open(cls, day: date):
@@ -270,10 +275,12 @@ class GymSchedule(BaseSchedule):
 
     @classmethod
     async def time_ranges_for_day(cls, day: date):
-        regular_time_range = ((time(hour=18, minute=0), time(hour=19, minute=0)),
-                              (time(hour=19, minute=0), time(hour=20, minute=0)))
+        regular_time_range = ((time(hour=18, minute=0), time(hour=19, minute=30)),
+                              (time(hour=19, minute=30), time(hour=21, minute=0)))
         saturday = ((time(hour=12, minute=0), time(hour=13, minute=0)),
                     (time(hour=13, minute=0), time(hour=14, minute=0)))
+        sunday = ((time(hour=11, minute=0), time(hour=12, minute=30)),
+                    (time(hour=12, minute=30), time(hour=14, minute=0)))
         schedule = {
             1: None,
             2: regular_time_range,
@@ -281,7 +288,7 @@ class GymSchedule(BaseSchedule):
             4: regular_time_range,
             5: None,
             6: saturday,
-            7: None
+            7: sunday
         }
         return schedule.get(day.isoweekday())
 
@@ -300,7 +307,7 @@ class GymSchedule(BaseSchedule):
                            ) -> bool:
         [d1, d2] = [datetime.combine(day, t) for t in time_range]
         recs = await db.count_gym_records(d1, d2)
-        return recs < cls.max_people and (datetime.now() + timedelta(minutes=20) <= d1)
+        return recs < cls.max_people and (datetime.now() - timedelta(minutes=20) <= d1)
 
     async def _draw_records(self, ax, begin_time: time, time_range: typing.Tuple[time, time]):
 

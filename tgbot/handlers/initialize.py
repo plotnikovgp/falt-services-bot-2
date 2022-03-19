@@ -237,16 +237,19 @@ def register_meet_handlers(dp: Dispatcher):
         accept_meet,
         IsReplyFilter(is_reply=True), IDFilter(chat_id=admin_group_id),
         content_types=ContentType.DOCUMENT,
+        state='*',
     )
     dp.register_message_handler(
         reject_meet,
         IsReplyFilter(is_reply=True), IDFilter(chat_id=admin_group_id),
         content_types=ContentType.TEXT,
+        state='*'
     )
     dp.register_message_handler(
         set_passcode,
         IDFilter(chat_id=admin_group_id),
         commands=['pass'],
+        state='*'
     )
 
 

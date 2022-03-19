@@ -19,11 +19,10 @@ logger = logging.getLogger(__name__)
 
 async def db_operations(db: Database, bot=None):
     pass
-    # await db.add_user('test', 111111, '1234567')
-    # end = datetime.today()
-    # start = datetime.today() + timedelta(days=-13)
-    # count = await db.count_gym_records(start, end)
-    # print(f'Записей в зал: {count}')
+    #end = datetime.now() + timedelta(days=1)
+    #start = datetime.today() + timedelta(days=-29)
+    #count = await db.count_gym_records(start, end)
+    #print(f'Записей в зал: {count}')
     # await db.execute_cmd("UPDATE users SET fullname = 'Беляев Денис' WHERE fullname = $1", "/start Денис")
     # await bot.send_message(chat_id=1334757122, text='Пароль для входа: 0001244#')
 

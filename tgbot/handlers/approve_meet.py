@@ -25,10 +25,11 @@ async def forward_meet_record(call: types.CallbackQuery, state: FSMContext):
     record = Record.from_dict(data.get('new_records')[0])
     bot = call.bot
     db: Database = bot.get('db')
-    record_id = await db.add_meet_record(record.begin, record.end, data.get('user_id'))
 
-    text = call.message.text
-    record_data_text = text.split('\n')[-1].lower() if '\n' in text else '[ошибка при получении данных]'
+    d1, d2 = record.begin, record.end
+    record_id = await db.add_meet_record(d1, d2, data.get('user_id'))
+
+    record_data_text = d1.strftime('%d.%m') + ', ' + d1.strftime('%H:%M') + '-' + d2.strftime('%H:%M')
     text = f'Заявка на бронь боталки от {data.get("fullname")} на {record_data_text}\n\n' \
            f'Ответьте на это сообщение файлом для печати для принятия заявки или текстом' \
            f' с описанием отказа.' + f"\n\n#id{record_id}"

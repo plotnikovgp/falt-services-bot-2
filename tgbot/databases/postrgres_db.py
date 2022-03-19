@@ -198,43 +198,41 @@ class Database:
 
     async def count_wash_records(self, begin: datetime, end: datetime, washer: int):
         return await self.fetchval(
-            "SELECT COUNT(*) FROM wash_records WHERE (begin > $1 AND begin < $2 OR finish > $1 AND finish < $2)"
+            "SELECT COUNT(*) FROM wash_records WHERE (begin >= $1 AND begin < $2 OR finish > $1 AND finish <= $2)"
             " AND washer = $3", begin, end, washer)
 
     async def count_meet_records(self, begin: datetime, end: datetime):
         return await self.fetchval(
-            "SELECT COUNT(*) FROM meet_records WHERE (begin > $1 AND begin < $2 OR finish > $1 AND finish < $2)",
+            "SELECT COUNT(*) FROM meet_records WHERE ((begin >= $1 AND begin < $2 OR finish > $1 AND finish <= $2)"
+            " AND (is_approved = TRUE))",
             begin, end)
 
     async def get_wash_records(self, day: date):
-        async with self.pool.acquire() as connection:
-            day_start = datetime(day.year, day.month, day.day)
-            day_end = day_start + timedelta(days=1)
+        day_start = datetime(day.year, day.month, day.day)
+        day_end = day_start + timedelta(days=1)
 
-            records = await self.fetch(
-                "SELECT (begin, finish, user_tg_id, washer) FROM wash_records WHERE begin >= $1 AND finish <= $2",
-                day_start, day_end)
-            return [r['row'] for r in records]
+        records = await self.fetch(
+            "SELECT (begin, finish, user_tg_id, washer) FROM wash_records WHERE begin >= $1 AND finish <= $2",
+            day_start, day_end)
+        return [r['row'] for r in records]
 
     async def get_gym_records(self, day: date):
-        async with self.pool.acquire() as connection:
-            day_start = datetime(day.year, day.month, day.day)
-            day_end = day_start + timedelta(days=1)
+        day_start = datetime(day.year, day.month, day.day)
+        day_end = day_start + timedelta(days=1)
 
-            records = await self.fetch(
-                "SELECT (begin, finish, user_tg_id) FROM gym_records WHERE begin >= $1 AND finish <= $2",
-                day_start, day_end)
-            return [r['row'] for r in records]
+        records = await self.fetch(
+            "SELECT (begin, finish, user_tg_id) FROM gym_records WHERE begin >= $1 AND finish <= $2",
+            day_start, day_end)
+        return [r['row'] for r in records]
 
     async def get_meet_records(self, day: date):
-        async with self.pool.acquire() as connection:
-            day_start = datetime(day.year, day.month, day.day)
-            day_end = day_start + timedelta(days=1)
+        day_start = datetime(day.year, day.month, day.day)
+        day_end = day_start + timedelta(days=1)
 
-            records = await self.fetch(
-                "SELECT (begin, finish, user_tg_id) FROM meet_records WHERE begin >= $1 AND finish <= $2 "
-                "AND is_approved = TRUE", day_start, day_end)
-            return [r['row'] for r in records]
+        records = await self.fetch(
+            "SELECT (begin, finish, user_tg_id) FROM meet_records WHERE begin >= $1 AND finish <= $2 "
+            "AND is_approved = TRUE", day_start, day_end)
+        return [r['row'] for r in records]
 
     async def get_user_wash_records(self,
                                     user_tg_id: int,
