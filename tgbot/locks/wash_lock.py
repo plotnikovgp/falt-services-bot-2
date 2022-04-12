@@ -1,5 +1,4 @@
 # from datetime import datetime
-from uuid import uuid4
 # import aiohttp
 # import hmac
 # import hashlib
@@ -9,9 +8,11 @@ from uuid import uuid4
 # from binascii import hexlify, unhexlify
 # import json
 # import time
-# # from tgbot.bot import logger
-#
-#
+# from tgbot.bot import logger
+
+from uuid import uuid4
+
+
 async def create_passcode() -> str:
     passcode = '000' + str(uuid4().int)[:4]
     return passcode

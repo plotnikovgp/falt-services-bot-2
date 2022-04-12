@@ -29,7 +29,6 @@ async def choose_day(message: types.Message, state: FSMContext):
         return
 
     await state.reset_data()
-
     await CreateRecord.choose_day.set()
 
     service = message.get_command()[1:]     # remove '/'
@@ -45,6 +44,21 @@ async def choose_day(message: types.Message, state: FSMContext):
 
     keyboard = await keyboards.choose_day_keyboard(date.today(), service)
     await message.answer("Выберите день:", reply_markup=keyboard)
+
+
+async def close_wash_start(message: types.Message, state: FSMContext):
+    await state.reset_data()
+    await CreateRecord.choose_day.set()
+
+    service = 'wash'
+    await state.update_data(user_id=message.chat.id)
+    await state.update_data(service=service)
+
+    db: Database = message.bot.get('db')
+    user_data = await db.get_user(message.chat.id)
+    await state.update_data(fullname=user_data.get('fullname', ''))
+
+    await choose_default_day(message, state)
 
 
 async def switch_days(call: types.CallbackQuery, state: FSMContext):
