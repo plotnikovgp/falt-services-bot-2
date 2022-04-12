@@ -1,5 +1,5 @@
 from aiogram import Dispatcher
-from aiogram.dispatcher.filters import IsReplyFilter, IDFilter
+from aiogram.dispatcher.filters import IsReplyFilter, IDFilter, Text
 from aiogram.types import ContentType
 from .create_record import *
 from .payment import *
@@ -68,6 +68,7 @@ def register_record_handlers(dp: Dispatcher):
     )
     dp.register_message_handler(
         get_custom_time,
+        lambda c: not c.text.lower().startswith('/'),
         state=CreateRecord.choose_time,
     )
     dp.register_callback_query_handler(
@@ -105,6 +106,7 @@ def register_payment_handlers(dp: Dispatcher):
     )
     dp.register_message_handler(
         get_custom_top_up,
+        lambda c: not c.text.lower().startswith('/'),
         state=Payment.top_up_balance,
     )
 
@@ -192,23 +194,41 @@ def register_report_handlers(dp: Dispatcher):
 
 def register_admin_handlers(dp: Dispatcher):
     admin_group_id = dp.bot.get('admin_group_id')
+    admin_id = dp.bot.get('admin_id')
 
     dp.register_message_handler(
         change_user_balance,
         IsReplyFilter(is_reply=True), IDFilter(chat_id=admin_group_id),
-        commands=['up']
+        commands=['up'],
+        state='*'
     )
 
     dp.register_message_handler(
         reply_to_user,
         IDFilter(chat_id=admin_group_id),
-        commands=['ans']
+        commands=['ans'],
+        state='*'
     )
 
     dp.register_message_handler(
         get_user_info,
         IsReplyFilter(is_reply=True), IDFilter(chat_id=admin_group_id),
-        commands=['user_info']
+        commands=['user_info'],
+        state='*'
+    )
+
+    dp.register_message_handler(
+        close_wash_start,
+        IDFilter(chat_id=admin_group_id),
+        commands=['close_wash'],
+        state='*'
+    )
+
+    dp.register_message_handler(
+        set_passcode,
+        IDFilter(chat_id=[admin_group_id, admin_id]),
+        commands=['pass'],
+        state='*'
     )
 
 
@@ -228,6 +248,7 @@ def register_notification_handlers(dp: Dispatcher):
 
 def register_meet_handlers(dp: Dispatcher):
     admin_group_id = dp.bot.get('admin_group_id')
+
     dp.register_callback_query_handler(
         forward_meet_record,
         lambda c: c.data == 'meet_to_approve',
@@ -237,17 +258,15 @@ def register_meet_handlers(dp: Dispatcher):
         accept_meet,
         IsReplyFilter(is_reply=True), IDFilter(chat_id=admin_group_id),
         content_types=ContentType.DOCUMENT,
+        state='*',
     )
     dp.register_message_handler(
         reject_meet,
         IsReplyFilter(is_reply=True), IDFilter(chat_id=admin_group_id),
         content_types=ContentType.TEXT,
+        state='*'
     )
-    dp.register_message_handler(
-        set_passcode,
-        IDFilter(chat_id=admin_group_id),
-        commands=['pass'],
-    )
+
 
 
 async def register_handlers(dp: Dispatcher):

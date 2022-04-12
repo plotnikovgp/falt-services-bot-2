@@ -29,7 +29,6 @@ async def choose_day(message: types.Message, state: FSMContext):
         return
 
     await state.reset_data()
-
     await CreateRecord.choose_day.set()
 
     service = message.get_command()[1:]     # remove '/'
@@ -45,6 +44,21 @@ async def choose_day(message: types.Message, state: FSMContext):
 
     keyboard = await keyboards.choose_day_keyboard(date.today(), service)
     await message.answer("Выберите день:", reply_markup=keyboard)
+
+
+async def close_wash_start(message: types.Message, state: FSMContext):
+    await state.reset_data()
+    await CreateRecord.choose_day.set()
+
+    service = 'wash'
+    await state.update_data(user_id=message.chat.id)
+    await state.update_data(service=service)
+
+    db: Database = message.bot.get('db')
+    user_data = await db.get_user(message.chat.id)
+    await state.update_data(fullname=user_data.get('fullname', ''))
+
+    await choose_default_day(message, state)
 
 
 async def switch_days(call: types.CallbackQuery, state: FSMContext):
@@ -124,7 +138,7 @@ async def after_day_chosen(call: typing.Optional[types.CallbackQuery],
 
 async def change_day(call: types.CallbackQuery, state: FSMContext):
     await CreateRecord.choose_day.set()
-
+    await call.answer()
     data = await state.get_data()
     service = data.get('service')
     keyboard = await keyboards.choose_day_keyboard(date.today(), service)
@@ -282,11 +296,9 @@ async def time_chosen(message: types.Message, state: FSMContext):
         text += 'Боталка, '
     text += await record_data_repr(records, service)
 
-    minute_prices = {'wash': WashSchedule.minute_price, 'gym': GymSchedule.minute_price}
-    minutes = sum([r.duration() for r in records])
-    cost = minutes * minute_prices.get(service, 0)
-    await state.update_data(cost=cost)
     if service != 'meet':
+        cost = sum(r.cost(service) for r in records)
+        await state.update_data(cost=cost)
         text += f'\nК оплате: {cost} руб.'
 
     keyboard = await keyboards.time_chosen_keyboard(service)

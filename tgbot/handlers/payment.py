@@ -159,13 +159,14 @@ async def after_payment(message: types.Message, state: FSMContext):
     text += "Данные записи:\n"
     text += await record_data_repr(recs, service)
     if service == 'wash':
-        passcode = await db.get_passcode(recs[0].begin)
-        if not passcode:
-            passcode = await db.get_passcode() or await db.get_passcode(date.today() - timedelta(days=1))
-            if not passcode:
-                passcode = '0004984'
+        for i in range(50):
+            passcode = await db.get_passcode(date.today() - timedelta(days=i))
+            if passcode:
+                break
+        else:
+            passcode = '0003405'
         text += f"\nКод для входа:\n{passcode}#"
-    # text += '\nОтменить запись: /records'
+
     keyboard = await keyboards.show_record_keyboard(recs[0].begin, record_id, service == 'wash')
     await message.edit_text(text=text, reply_markup=keyboard)
 

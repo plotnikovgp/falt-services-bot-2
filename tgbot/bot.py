@@ -17,14 +17,17 @@ from datetime import datetime, timedelta, time
 logger = logging.getLogger(__name__)
 
 
-async def db_operations(db: Database, bot=None):
-    pass
-    # await db.add_user('test', 111111, '1234567')
-    # end = datetime.today()
-    # start = datetime.today() + timedelta(days=-13)
+async def db_operations(db: Database, bot):
+    # user_data = await db.get_user(bot['admin_group_id'])
+    # if not user_data:
+    #     await db.add_user(username='admin', tg_id=bot['admin_group_id'],
+    #                       fullname='Не работает', passcode='0001122', balance=1000000)
+    #     await db.register_user(bot['admin_group_id'])
+    # end = datetime.now()
+    # start = datetime.today() + timedelta(days=-20)
     # count = await db.count_gym_records(start, end)
     # print(f'Записей в зал: {count}')
-    # await db.execute_cmd("UPDATE users SET fullname = 'Беляев Денис' WHERE fullname = $1", "/start Денис")
+    await db.execute_cmd("UPDATE users SET fullname = 'Орлова Алина' WHERE fullname = $1", "Орловп Алина")
     # await bot.send_message(chat_id=1334757122, text='Пароль для входа: 0001244#')
 
 
@@ -53,6 +56,7 @@ async def main():
     bot['ps'] = PaySystem(token=config.pay_system.token)
     bot['scheduler'] = AsyncIOScheduler()
     bot['admin_group_id'] = config.tg_bot.admin_group_id
+    bot['admin_id'] = config.tg_bot.admin_id
 
     logging.getLogger('apscheduler.executors.default').propagate = False
     bot['scheduler'].start()

@@ -40,6 +40,13 @@ class Record:
         delta = self.end - self.begin
         return round(delta.total_seconds() / 60)
 
+    def cost(self, service: str) -> float:
+        if service == 'gym':
+            return 30
+        minute_prices = {'wash': 0.25 if self.washer != 5 else 0.125, 'gym': 0.5, 'meet': 0.}
+        cost = self.duration() * minute_prices[service]
+        return round(cost * 2) / 2
+
 
 async def merge_records(records: typing.List[Record]):
     recs_by_washers = {}
@@ -100,7 +107,6 @@ class BaseSchedule:
 @dataclass
 class WashSchedule(BaseSchedule):
     is_working: typing.Tuple[int] = (1, 1, 1, 1, 1, 1)
-    minute_price: float = 0.25
     minutes_to_close: int = 30
 
     @staticmethod
@@ -119,7 +125,7 @@ class WashSchedule(BaseSchedule):
         s_time = tf.datetime_time_repr(record.begin) + "-" + tf.datetime_time_repr(record.end)
 
         name = record.name
-        if name and ' ' in name:
+        if name and name != 'Не работает' and ' ' in name:
             splited = name.split(' ')
             [l_name, f_name] = splited[0], splited[-1]
             name = l_name + ' ' + f_name[0] + '.' if f_name else l_name
@@ -183,7 +189,7 @@ class WashSchedule(BaseSchedule):
                            ) -> bool:
         [d1, d2] = [datetime.combine(day, t) for t in time_range]
         recs = await db.count_wash_records(d1, d2, washer)
-        return recs == 0 and datetime.now() + timedelta(minutes=10) <= d1
+        return recs == 0 and datetime.now() - timedelta(minutes=20) <= d1
 
 
 @dataclass_json
@@ -197,12 +203,15 @@ class MeetSchedule(BaseSchedule):
         xlen = ax.get_xlim()[1] - ax.get_xlim()[0]
         xdist_from_edge = 24
         alpha = 0.85
+
+        name = record.name
+        fc = '#A4R4FC' if name != 'Не работает' else '#FFB4B4'
+        ec = '#429BDB' if name != 'Не работает' else '#E56C6C'
         p_record = FancyBboxPatch((xdist_from_edge + 3, begin + 4),
                                   xlen - 2 * xdist_from_edge, end - begin - 3,
-                                  zorder=2, fc='#a4e4fc', alpha=alpha, ec='#429BDB')
+                                  zorder=2, fc=fc, alpha=alpha, ec=ec)
         ax.add_patch(p_record)
         s_time = tf.datetime_time_repr(record.begin) + "-" + tf.datetime_time_repr(record.end)
-        name = record.name
 
         fontsize = 12 if begin - end >= 40 else 10
         ax.text(xlen / 2., begin + (end - begin) / 2., s_time + '  ' + str(name),
@@ -246,7 +255,6 @@ class MeetSchedule(BaseSchedule):
         plt.savefig(fname)
         return fname
 
-
     @classmethod
     async def is_time_free(cls,
                            db: Database,
@@ -257,12 +265,12 @@ class MeetSchedule(BaseSchedule):
         recs = await db.count_meet_records(d1, d2)
         return recs == 0 and datetime.now() <= d1
 
+
 @dataclass_json
 @dataclass
 class GymSchedule(BaseSchedule):
-    minute_price: float = 1 / 2.
     max_people: int = 7
-    minutes_to_close: int = 30
+    minutes_to_close: int = 5
 
     @classmethod
     async def is_open(cls, day: date):
@@ -270,16 +278,22 @@ class GymSchedule(BaseSchedule):
 
     @classmethod
     async def time_ranges_for_day(cls, day: date):
-        regular_time_range = ((time(hour=18, minute=0), time(hour=19, minute=0)),
-                              (time(hour=19, minute=0), time(hour=20, minute=0)))
-        saturday = ((time(hour=12, minute=0), time(hour=13, minute=0)),
-                    (time(hour=13, minute=0), time(hour=14, minute=0)))
+        regular = ((time(hour=17, minute=30), time(hour=19, minute=0)),
+                   (time(hour=19, minute=0), time(hour=20, minute=30)))
+
+        friday = ((time(hour=10, minute=30), time(hour=12, minute=30)),
+                  (time(hour=17, minute=30), time(hour=19, minute=0)),
+                  (time(hour=19, minute=0), time(hour=20, minute=30)))
+
+        saturday = ((time(hour=15, minute=0), time(hour=16, minute=30)),
+                    (time(hour=16, minute=30), time(hour=18, minute=0)))
+
         schedule = {
             1: None,
-            2: regular_time_range,
-            3: regular_time_range,
-            4: regular_time_range,
-            5: None,
+            2: regular,
+            3: regular,
+            4: regular,
+            5: regular,
             6: saturday,
             7: None
         }
@@ -300,9 +314,9 @@ class GymSchedule(BaseSchedule):
                            ) -> bool:
         [d1, d2] = [datetime.combine(day, t) for t in time_range]
         recs = await db.count_gym_records(d1, d2)
-        return recs < cls.max_people and (datetime.now() + timedelta(minutes=20) <= d1)
+        return recs < cls.max_people and (datetime.now() - timedelta(minutes=20) <= d1)
 
-    async def _draw_records(self, ax, begin_time: time, time_range: typing.Tuple[time, time]):
+    async def _draw_records(self, ax, begin_time: time, time_range: typing.Tuple[time, time], n: int):
 
         records_in_tr = await self.get_records_in_range(time_range)
         frees_slots = self.max_people - len(records_in_tr)
@@ -315,7 +329,7 @@ class GymSchedule(BaseSchedule):
         alpha = 1
         height = (end - begin) // (self.max_people + 1)
         p_free_slots = FancyBboxPatch((0, begin), xlen, height,
-                                  zorder=2, fc='#FFFFFF', alpha=alpha, ec='#429BDB', lw=1.5)
+                                      zorder=2, fc='#FFFFFF', alpha=alpha, ec='#429BDB', lw=1.5)
         ax.add_patch(p_free_slots)
 
         tr_s = [t.isoformat(timespec='minutes') for t in time_range]
@@ -328,7 +342,7 @@ class GymSchedule(BaseSchedule):
                     f'{i + 1}) {record.name}',
                     ha='left', va='center', fontsize='12', fontweight='bold')
 
-    async def _draw_column(self, ax, is_working: bool = True):
+    async def _draw_column(self, ax):
         tr = await self.time_ranges_for_day(self.day)
         minutes_in_day = await tf.diff_in_minutes(tr[0][0], tr[-1][-1]) if tr else 120
 
@@ -357,7 +371,7 @@ class GymSchedule(BaseSchedule):
 
         begin_time = day_time_ranges[0][0]
         for time_range in day_time_ranges:
-            await self._draw_records(ax, begin_time, time_range)
+            await self._draw_records(ax, begin_time, time_range, len(day_time_ranges))
 
         for spine in ax.spines.values():
             spine.set_edgecolor('#429BDB')

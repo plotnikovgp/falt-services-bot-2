@@ -198,49 +198,49 @@ class Database:
 
     async def count_wash_records(self, begin: datetime, end: datetime, washer: int):
         return await self.fetchval(
-            "SELECT COUNT(*) FROM wash_records WHERE (begin > $1 AND begin < $2 OR finish > $1 AND finish < $2)"
-            " AND washer = $3", begin, end, washer)
+            "SELECT COUNT(*) FROM wash_records WHERE ((begin >= $1 AND begin < $2) OR (finish > $1 AND finish <= $2)"
+            " OR (begin <= $1 AND finish >= $2)) AND washer = $3", begin, end, washer)
 
     async def count_meet_records(self, begin: datetime, end: datetime):
         return await self.fetchval(
-            "SELECT COUNT(*) FROM meet_records WHERE (begin > $1 AND begin < $2 OR finish > $1 AND finish < $2)",
+            "SELECT COUNT(*) FROM meet_records WHERE ((begin >= $1 AND begin < $2 OR finish > $1 AND finish <= $2)"
+            " AND (is_approved = TRUE))",
             begin, end)
 
     async def get_wash_records(self, day: date):
-        async with self.pool.acquire() as connection:
-            day_start = datetime(day.year, day.month, day.day)
-            day_end = day_start + timedelta(days=1)
+        day_start = datetime(day.year, day.month, day.day)
+        day_end = day_start + timedelta(days=1)
 
-            records = await self.fetch(
-                "SELECT (begin, finish, user_tg_id, washer) FROM wash_records WHERE begin >= $1 AND finish <= $2",
-                day_start, day_end)
-            return [r['row'] for r in records]
+        records = await self.fetch(
+            "SELECT (begin, finish, user_tg_id, washer) FROM wash_records WHERE begin >= $1 AND finish <= $2",
+            day_start, day_end)
+        return [r['row'] for r in records]
 
     async def get_gym_records(self, day: date):
-        async with self.pool.acquire() as connection:
-            day_start = datetime(day.year, day.month, day.day)
-            day_end = day_start + timedelta(days=1)
+        day_start = datetime(day.year, day.month, day.day)
+        day_end = day_start + timedelta(days=1)
 
-            records = await self.fetch(
-                "SELECT (begin, finish, user_tg_id) FROM gym_records WHERE begin >= $1 AND finish <= $2",
-                day_start, day_end)
-            return [r['row'] for r in records]
+        records = await self.fetch(
+            "SELECT (begin, finish, user_tg_id) FROM gym_records WHERE begin >= $1 AND finish <= $2",
+            day_start, day_end)
+        return [r['row'] for r in records]
 
     async def get_meet_records(self, day: date):
-        async with self.pool.acquire() as connection:
-            day_start = datetime(day.year, day.month, day.day)
-            day_end = day_start + timedelta(days=1)
+        day_start = datetime(day.year, day.month, day.day)
+        day_end = day_start + timedelta(days=1)
 
-            records = await self.fetch(
-                "SELECT (begin, finish, user_tg_id) FROM meet_records WHERE begin >= $1 AND finish <= $2 "
-                "AND is_approved = TRUE", day_start, day_end)
-            return [r['row'] for r in records]
+        records = await self.fetch(
+            "SELECT (begin, finish, user_tg_id) FROM meet_records WHERE begin >= $1 AND finish <= $2 "
+            "AND is_approved = TRUE", day_start, day_end)
+        return [r['row'] for r in records]
 
     async def get_user_wash_records(self,
                                     user_tg_id: int,
-                                    start: datetime = datetime.now(),
-                                    end: datetime = datetime.now() + timedelta(weeks=10),
+                                    start: typing.Optional[datetime] = None,
+                                    end: typing.Optional[datetime] = None,
                                     ):
+        start = start or datetime.now() - timedelta(hours=2)
+        end = end or datetime.now() + timedelta(weeks=30)
         records = await self.fetch(
             "SELECT (id, begin, finish, washer) FROM wash_records WHERE begin >= $1 AND finish <= $2"
             " AND user_tg_id = $3", start, end, user_tg_id)
@@ -248,9 +248,11 @@ class Database:
 
     async def get_user_gym_records(self,
                                    user_tg_id: int,
-                                   start: datetime = datetime.now(),
-                                   end: datetime = datetime.now() + timedelta(weeks=10),
+                                   start: typing.Optional[datetime] = None,
+                                   end: typing.Optional[datetime] = None,
                                    ):
+        start = start or datetime.now() - timedelta(hours=2)
+        end = end or datetime.now() + timedelta(weeks=30)
         records = await self.fetch(
             "SELECT (id, begin, finish) FROM gym_records WHERE begin >= $1 AND finish <= $2"
             " AND user_tg_id = $3", start, end, user_tg_id)
@@ -258,9 +260,11 @@ class Database:
 
     async def get_user_meet_records(self,
                                     user_tg_id: int,
-                                    start: datetime = datetime.now(),
-                                    end: datetime = datetime.now() + timedelta(weeks=10),
+                                    start: typing.Optional[datetime] = None,
+                                    end: typing.Optional[datetime] = None,
                                     ):
+        start = start or datetime.now() - timedelta(hours=2)
+        end = end or datetime.now() + timedelta(weeks=30)
         records = await self.fetch(
             "SELECT (id, begin, finish, is_approved) FROM meet_records WHERE begin >= $1 AND finish <= $2"
             " AND user_tg_id = $3", start, end, user_tg_id)
@@ -309,7 +313,8 @@ class Database:
         return res.get('link') if res else None
 
     # passcode, will be removed soon
-    async def update_passcode(self, passcode: str, day: date = date.today()):
+    async def update_passcode(self, passcode: str, day: typing.Optional[date] = None):
+        day = day or date.today()
         cmd = "INSERT INTO working_passcodes (passcode, day) VALUES ($1, $2)"
         await self.execute_cmd(cmd, passcode, day)
 
